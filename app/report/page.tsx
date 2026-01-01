@@ -1,90 +1,87 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   FileText,
+  Calendar,
+  Clock,
   MapPin,
   Monitor,
   User,
-  Clock,
   CheckCircle,
   Trash2,
 } from "lucide-react";
-import Link from "next/link";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../../lib/supabase";
 
-/* =======================
-   TYPE DEFINITION
-   ======================= */
 interface Report {
   id: string;
   name: string;
   equipment: string;
   description: string;
   created_at: string;
-  buildings?: {
-    name: string;
-  };
-  floors?: {
-    floor_name: string;
-  };
-  rooms?: {
-    room_name: string;
-  };
+  buildings?: { name: string };
+  floors?: { floor_name: string };
+  rooms?: { room_name: string };
 }
 
-export default function DashboardPage() {
+export default function ReportsListPage() {
   const [reports, setReports] = useState<Report[]>([]);
+  const [date, setDate] = useState("");
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchTodayReports();
+    fetchReports();
   }, []);
 
-  /* =======================
-     FETCH TODAY REPORTS
-     ======================= */
-  const fetchTodayReports = async () => {
+  const fetchReports = async (selectedDate?: string) => {
     setLoading(true);
     setFetchError(null);
 
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
+    try {
+      let query = supabase
+        .from("reports")
+        .select(`
+          id,
+          name,
+          equipment,
+          description,
+          created_at,
+          buildings ( name ),
+          floors ( floor_name ),
+          rooms ( room_name )
+        `)
+        .order("created_at", { ascending: false });
 
-    const end = new Date();
-    end.setHours(23, 59, 59, 999);
+      if (selectedDate) {
+        const start = new Date(selectedDate);
+        start.setHours(0, 0, 0, 0);
 
-    const { data, error } = await supabase
-      .from("reports")
-      .select(`
-        id,
-        name,
-        equipment,
-        description,
-        created_at,
-        buildings ( name ),
-        floors ( floor_name ),
-        rooms ( room_name )
-      `)
-      .gte("created_at", start.toISOString())
-      .lte("created_at", end.toISOString())
-      .order("created_at", { ascending: false });
+        const end = new Date(selectedDate);
+        end.setHours(23, 59, 59, 999);
 
-    if (error) {
-      console.error("Failed to fetch reports:", error);
-      setFetchError(error.message);
+        query = query
+          .gte("created_at", start.toISOString())
+          .lte("created_at", end.toISOString());
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        setFetchError(error.message);
+        setReports([]);
+      } else if (data && Array.isArray(data)) {
+        setReports(data as unknown as Report[]);
+      }
+    } catch (err) {
+      setFetchError("Unexpected error fetching reports");
       setReports([]);
-    } else if (data && Array.isArray(data)) {
-      setReports(data as unknown as Report[]);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-  /* =======================
-     DELETE REPORT
-     ======================= */
   const deleteReport = async (id: string) => {
     if (!confirm("Are you sure you want to remove this report?")) return;
 
@@ -94,7 +91,6 @@ export default function DashboardPage() {
       setReports((prev) => prev.filter((r) => r.id !== id));
     } else {
       console.error("Failed to delete report:", error);
-      alert("Failed to delete report. Please try again.");
     }
   };
 
@@ -107,16 +103,13 @@ export default function DashboardPage() {
         </div>
 
         <nav className="p-4 space-y-2">
-          <Link
-            href="/admin/dashboard"
-            className="block px-3 py-2 rounded-lg bg-indigo-100 text-indigo-700"
-          >
+          <Link href="/" className="block px-3 py-2 rounded-lg hover:bg-gray-100">
             Today Dashboard
           </Link>
 
           <Link
             href="/report"
-            className="block px-3 py-2 rounded-lg hover:bg-gray-100"
+            className="block px-3 py-2 rounded-lg bg-indigo-100 text-indigo-700 font-medium"
           >
             All Reports
           </Link>
@@ -129,9 +122,23 @@ export default function DashboardPage() {
         <div className="mb-8 bg-white rounded-2xl shadow p-6 text-center">
           <h1 className="text-3xl font-extrabold flex items-center justify-center gap-3">
             <FileText className="w-7 h-7 text-indigo-600" />
-            Today Reports
+            All Reports
           </h1>
-          <p className="mt-2 font-medium">Aduan yang diterima hari ini</p>
+          <p className="mt-2 font-medium">Senarai semua aduan mengikut tarikh</p>
+        </div>
+
+        {/* DATE FILTER */}
+        <div className="mb-8 flex items-center gap-3 bg-white p-4 rounded-xl shadow w-fit">
+          <Calendar className="w-5 h-5 text-indigo-600" />
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => {
+              setDate(e.target.value);
+              fetchReports(e.target.value);
+            }}
+            className="border rounded-lg px-4 py-2 font-medium text-black"
+          />
         </div>
 
         {/* LOADING */}
@@ -142,9 +149,9 @@ export default function DashboardPage() {
           <p className="text-center text-red-600 font-medium">{fetchError}</p>
         )}
 
-        {/* EMPTY STATE */}
+        {/* EMPTY */}
         {!loading && !fetchError && reports.length === 0 && (
-          <p className="text-center font-medium">No reports submitted today</p>
+          <p className="text-center font-medium">No reports found</p>
         )}
 
         {/* REPORT CARDS */}
@@ -194,7 +201,6 @@ export default function DashboardPage() {
                       <span>Equipment:</span> {report.equipment}
                     </p>
 
-                    {/* DESCRIPTION */}
                     <div className="mt-3 bg-gray-100 p-3 rounded-lg text-sm font-normal">
                       {report.description}
                     </div>
@@ -207,7 +213,6 @@ export default function DashboardPage() {
                     className="flex-1 flex items-center justify-center gap-2
                        px-4 py-2 bg-green-600 text-white rounded-xl
                        font-semibold hover:bg-green-700 transition"
-                    // TODO: Add functionality if needed
                     onClick={() => alert("Done clicked!")}
                   >
                     <CheckCircle className="w-5 h-5" />
