@@ -154,7 +154,7 @@ export default function DashboardPage() {
               <div
                 key={report.id}
                 className="bg-white rounded-2xl shadow-xl border-t-4 border-indigo-600
-                   p-6 flex flex-col justify-between min-h-[460px]
+                   p-6 flex flex-col justify-between min-h-115
                    hover:shadow-2xl transition"
               >
                 {/* TOP */}
