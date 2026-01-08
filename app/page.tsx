@@ -22,15 +22,10 @@ interface Report {
   equipment: string;
   description: string;
   created_at: string;
-  buildings?: {
-    name: string;
-  };
-  floors?: {
-    floor_name: string;
-  };
-  rooms?: {
-    room_name: string;
-  };
+  status: "pending" | "completed";
+  buildings?: { name: string };
+  floors?: { floor_name: string };
+  rooms?: { room_name: string };
 }
 
 export default function DashboardPage() {
@@ -63,6 +58,7 @@ export default function DashboardPage() {
         equipment,
         description,
         created_at,
+        status,
         buildings ( name ),
         floors ( floor_name ),
         rooms ( room_name )
@@ -80,6 +76,24 @@ export default function DashboardPage() {
     }
 
     setLoading(false);
+  };
+
+  /* =======================
+     MARK AS COMPLETED
+     ======================= */
+  const markAsCompleted = async (id: string) => {
+    const { error } = await supabase
+      .from("reports")
+      .update({ status: "completed" })
+      .eq("id", id);
+
+    if (!error) {
+      setReports((prev) =>
+        prev.map((r) =>
+          r.id === id ? { ...r, status: "completed" } : r
+        )
+      );
+    }
   };
 
   /* =======================
@@ -134,33 +148,44 @@ export default function DashboardPage() {
           <p className="mt-2 font-medium">Aduan yang diterima hari ini</p>
         </div>
 
-        {/* LOADING */}
-        {loading && <p className="text-center font-medium">Loading reports...</p>}
+        {loading && (
+          <p className="text-center font-medium">Loading reports...</p>
+        )}
 
-        {/* FETCH ERROR */}
         {fetchError && (
-          <p className="text-center text-red-600 font-medium">{fetchError}</p>
+          <p className="text-center text-red-600 font-medium">
+            {fetchError}
+          </p>
         )}
 
-        {/* EMPTY STATE */}
         {!loading && !fetchError && reports.length === 0 && (
-          <p className="text-center font-medium">No reports submitted today</p>
+          <p className="text-center font-medium">
+            No reports submitted today
+          </p>
         )}
 
-        {/* REPORT CARDS */}
         {!loading && !fetchError && reports.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {reports.map((report, index) => (
               <div
                 key={report.id}
-                className="bg-white rounded-2xl shadow-xl border-t-4 border-indigo-600
-                   p-6 flex flex-col justify-between min-h-115
-                   hover:shadow-2xl transition"
+                className={`
+                  bg-white rounded-2xl shadow-xl border-t-4
+                  ${
+                    report.status === "completed"
+                      ? "border-green-600"
+                      : "border-red-600"
+                  }
+                  p-6 flex flex-col justify-between min-h-115
+                  hover:shadow-2xl transition
+                `}
               >
                 {/* TOP */}
                 <div>
                   <div className="text-center mb-4">
-                    <h2 className="text-xl font-bold">Report {index + 1}</h2>
+                    <h2 className="text-xl font-bold">
+                      Report {index + 1}
+                    </h2>
                     <p className="text-sm flex justify-center items-center gap-1 mt-1 font-medium">
                       <Clock className="w-4 h-4" />
                       {new Date(report.created_at).toLocaleTimeString()}
@@ -171,30 +196,29 @@ export default function DashboardPage() {
                   <div className="space-y-3 text-sm font-medium">
                     <p className="flex items-center gap-2">
                       <User className="w-4 h-4 text-indigo-600" />
-                      <span>Name:</span> {report.name}
+                      Name: {report.name}
                     </p>
 
                     <p className="flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-indigo-600" />
-                      <span>Building:</span> {report.buildings?.name ?? "N/A"}
+                      Building: {report.buildings?.name ?? "N/A"}
                     </p>
 
                     <p className="flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-indigo-600" />
-                      <span>Floor:</span> {report.floors?.floor_name ?? "N/A"}
+                      Floor: {report.floors?.floor_name ?? "N/A"}
                     </p>
 
                     <p className="flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-indigo-600" />
-                      <span>Room:</span> {report.rooms?.room_name ?? "N/A"}
+                      Room: {report.rooms?.room_name ?? "N/A"}
                     </p>
 
                     <p className="flex items-center gap-2">
                       <Monitor className="w-4 h-4 text-indigo-600" />
-                      <span>Equipment:</span> {report.equipment}
+                      Equipment: {report.equipment}
                     </p>
 
-                    {/* DESCRIPTION */}
                     <div className="mt-3 bg-gray-100 p-3 rounded-lg text-sm font-normal">
                       {report.description}
                     </div>
@@ -204,21 +228,27 @@ export default function DashboardPage() {
                 {/* ACTION BUTTONS */}
                 <div className="mt-6 flex gap-3">
                   <button
-                    className="flex-1 flex items-center justify-center gap-2
-                       px-4 py-2 bg-green-600 text-white rounded-xl
-                       font-semibold hover:bg-green-700 transition"
-                    // TODO: Add functionality if needed
-                    onClick={() => alert("Done clicked!")}
+                    disabled={report.status === "completed"}
+                    onClick={() => markAsCompleted(report.id)}
+                    className={`flex-1 flex items-center justify-center gap-2
+                      px-4 py-2 rounded-xl font-semibold transition
+                      ${
+                        report.status === "completed"
+                          ? "bg-gray-400 cursor-not-allowed"
+                          : "bg-green-600 hover:bg-green-700 text-white"
+                      }`}
                   >
                     <CheckCircle className="w-5 h-5" />
-                    DONE
+                    {report.status === "completed"
+                      ? "COMPLETED"
+                      : "DONE"}
                   </button>
 
                   <button
                     onClick={() => deleteReport(report.id)}
                     className="flex-1 flex items-center justify-center gap-2
-                       px-4 py-2 bg-red-600 text-white rounded-xl
-                       font-semibold hover:bg-red-700 transition"
+                      px-4 py-2 bg-red-600 text-white rounded-xl
+                      font-semibold hover:bg-red-700 transition"
                   >
                     <Trash2 className="w-5 h-5" />
                     REMOVE
