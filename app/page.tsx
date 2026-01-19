@@ -53,26 +53,32 @@ export default function DashboardPage() {
     const { data, error } = await supabase
       .from("reports")
       .select(`
-        id,
-        name,
-        equipment,
-        description,
-        created_at,
-        status,
-        buildings ( name ),
-        floors ( floor_name ),
-        rooms ( room_name )
-      `)
+  id,
+  name,
+  equipment,
+  description,
+  created_at,
+  status,
+  rooms (
+    room_name,
+    floors (
+      floor_name,
+      buildings (
+        name
+      )
+    )
+  )
+`)
+
       .gte("created_at", start.toISOString())
       .lte("created_at", end.toISOString())
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Failed to fetch reports:", error);
       setFetchError(error.message);
       setReports([]);
-    } else if (data && Array.isArray(data)) {
-      setReports(data as unknown as Report[]);
+    } else {
+      setReports((data as unknown as Report[]) ?? []);
     }
 
     setLoading(false);
@@ -106,16 +112,13 @@ export default function DashboardPage() {
 
     if (!error) {
       setReports((prev) => prev.filter((r) => r.id !== id));
-    } else {
-      console.error("Failed to delete report:", error);
-      alert("Failed to delete report. Please try again.");
     }
   };
 
   return (
-    <div className="min-h-screen flex bg-gray-100 text-black">
+    <div className="min-h-screen bg-gray-100 text-black md:flex">
       {/* SIDEBAR */}
-      <aside className="w-64 bg-white shadow-sm">
+      <aside className="hidden md:block w-64 bg-white shadow-sm">
         <div className="p-6">
           <h2 className="text-xl font-bold text-indigo-700">Admin Panel</h2>
         </div>
@@ -137,11 +140,21 @@ export default function DashboardPage() {
         </nav>
       </aside>
 
+      {/* MOBILE HEADER */}
+      <div className="md:hidden bg-white shadow p-4 flex justify-between items-center">
+        <h2 className="text-lg font-bold text-indigo-700">Admin Panel</h2>
+        <Link
+          href="/report"
+          className="text-sm font-semibold text-indigo-600"
+        >
+          All Reports
+        </Link>
+      </div>
+
       {/* MAIN CONTENT */}
-      <main className="flex-1 p-8">
-        {/* HEADER */}
+      <main className="flex-1 p-4 md:p-8">
         <div className="mb-8 bg-white rounded-2xl shadow p-6 text-center">
-          <h1 className="text-3xl font-extrabold flex items-center justify-center gap-3">
+          <h1 className="text-xl md:text-3xl font-extrabold flex items-center justify-center gap-2 md:gap-3">
             <FileText className="w-7 h-7 text-indigo-600" />
             Today Reports
           </h1>
@@ -165,22 +178,16 @@ export default function DashboardPage() {
         )}
 
         {!loading && !fetchError && reports.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
             {reports.map((report, index) => (
               <div
                 key={report.id}
-                className={`
-                  bg-white rounded-2xl shadow-xl border-t-4
-                  ${
-                    report.status === "completed"
-                      ? "border-green-600"
-                      : "border-red-600"
-                  }
-                  p-6 flex flex-col justify-between min-h-115
-                  hover:shadow-2xl transition
-                `}
+                className={`bg-white rounded-2xl shadow-xl border-t-4 ${
+                  report.status === "completed"
+                    ? "border-green-600"
+                    : "border-red-600"
+                } p-6 flex flex-col justify-between`}
               >
-                {/* TOP */}
                 <div>
                   <div className="text-center mb-4">
                     <h2 className="text-xl font-bold">
@@ -192,8 +199,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
 
-                  {/* DETAILS */}
-                  <div className="space-y-3 text-sm font-medium">
+                  <div className="space-y-2 text-sm font-medium">
                     <p className="flex items-center gap-2">
                       <User className="w-4 h-4 text-indigo-600" />
                       Name: {report.name}
@@ -225,30 +231,23 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* ACTION BUTTONS */}
-                <div className="mt-6 flex gap-3">
+                <div className="mt-6 flex flex-col sm:flex-row gap-3">
                   <button
                     disabled={report.status === "completed"}
                     onClick={() => markAsCompleted(report.id)}
-                    className={`flex-1 flex items-center justify-center gap-2
-                      px-4 py-2 rounded-xl font-semibold transition
-                      ${
-                        report.status === "completed"
-                          ? "bg-gray-400 cursor-not-allowed"
-                          : "bg-green-600 hover:bg-green-700 text-white"
-                      }`}
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-semibold ${
+                      report.status === "completed"
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-green-600 hover:bg-green-700 text-white"
+                    }`}
                   >
                     <CheckCircle className="w-5 h-5" />
-                    {report.status === "completed"
-                      ? "COMPLETED"
-                      : "DONE"}
+                    {report.status === "completed" ? "COMPLETED" : "DONE"}
                   </button>
 
                   <button
                     onClick={() => deleteReport(report.id)}
-                    className="flex-1 flex items-center justify-center gap-2
-                      px-4 py-2 bg-red-600 text-white rounded-xl
-                      font-semibold hover:bg-red-700 transition"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700"
                   >
                     <Trash2 className="w-5 h-5" />
                     REMOVE

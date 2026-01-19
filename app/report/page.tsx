@@ -15,7 +15,7 @@ import {
 import { supabase } from "../../lib/supabase";
 
 interface Report {
-  id: string;
+  report_id: string;
   name: string;
   equipment: string;
   description: string;
@@ -23,7 +23,16 @@ interface Report {
   status: "pending" | "completed";
   buildings?: { name: string };
   floors?: { floor_name: string };
-  rooms?: { room_name: string };
+  rooms?: {
+  room_name: string;
+  floors?: {
+    floor_name: string;
+    buildings?: {
+      name: string;
+    };
+  };
+};
+
 }
 
 export default function ReportsListPage() {
@@ -38,7 +47,17 @@ export default function ReportsListPage() {
   const [floors, setFloors] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
 
-  
+  // =====================
+// FILTERED DROPDOWNS
+// =====================
+const filteredFloors = building
+  ? floors.filter((f) => f.id_building === building)
+  : floors;
+
+const filteredRooms = floor
+  ? rooms.filter((r) => r.id_floor === floor)
+  : rooms;
+
 
   useEffect(() => {
   fetchReports();
@@ -54,17 +73,23 @@ export default function ReportsListPage() {
       let query = supabase
         .from("reports")
         .select(`
-          id,
+          report_id,
           name,
           equipment,
           description,
           created_at,
           status,
-          buildings!inner ( name ),
-          floors!inner ( floor_name ),
-          rooms!inner ( room_name )
+          rooms!reports_id_room_fkey (
+            room_name,
+            floors!rooms_id_floor_fkey (
+              floor_name,
+              buildings!floors_id_building_fkey (
+                name
+              )
+            )
+          )
+        `)
 
-        `);
 
       // DATE FILTER
       if (selectedDate) {
@@ -79,14 +104,16 @@ export default function ReportsListPage() {
           .lte("created_at", end.toISOString());
       }
 
-      // BUILDING FILTER
-      if (building) query = query.eq("buildings.name", building);
+      // ROOM (direct FK)
+if (room) query = query.eq("id_room", room);
 
-      // FLOOR FILTER
-      if (floor) query = query.eq("floors.floor_name", floor);
+// FLOOR (via room relation)
+if (floor)
+  query = query.eq("rooms.id_floor", floor);
 
-      // ROOM FILTER
-      if (room) query = query.eq("rooms.room_name", room);
+// BUILDING (via floors)
+if (building)
+  query = query.eq("rooms.floors.id_building", building);
 
       const { data, error } = await query;
 
@@ -119,12 +146,12 @@ export default function ReportsListPage() {
     const { error } = await supabase
       .from("reports")
       .update({ status: "completed" })
-      .eq("id", id);
+      .eq("report_id", id);
 
     if (!error) {
       setReports((prev) =>
         prev.map((r) =>
-          r.id === id ? { ...r, status: "completed" } : r
+          r.report_id === id ? { ...r, status: "completed" } : r
         )
       );
     }
@@ -133,17 +160,18 @@ export default function ReportsListPage() {
   const deleteReport = async (id: string) => {
     if (!confirm("Are you sure you want to remove this report?")) return;
 
-    const { error } = await supabase.from("reports").delete().eq("id", id);
+    const { error } = await supabase.from("reports").delete().eq("report_id", id);
 
     if (!error) {
-      setReports((prev) => prev.filter((r) => r.id !== id));
+      setReports((prev) => prev.filter((r) => r.report_id !== id));
     }
   };
 
   const fetchDropdownData = async () => {
-      const { data: b } = await supabase.from("buildings").select("id, name");
-      const { data: f } = await supabase.from("floors").select("id, floor_name");
-      const { data: r } = await supabase.from("rooms").select("id, room_name");
+      const { data: b } = await supabase.from("buildings").select("building_id, name");
+      const { data: f } = await supabase.from("floors").select("floor_id, floor_name, id_building");
+      const { data: r } = await supabase.from("rooms").select("room_id, room_name, id_floor");
+
 
       setBuildings(b || []);
       setFloors(f || []);
@@ -203,13 +231,13 @@ export default function ReportsListPage() {
   {/* BUILDING */}
   <select
     value={building}
-    onChange={(e) => setBuilding(e.target.value)}
+    onChange={(e) => {setBuilding(e.target.value);setFloor("");setRoom("");}}
     className="border rounded-lg px-3 py-2 font-medium"
   >
     <option value="">All Buildings</option>
     {buildings.map((b) => (
-      <option key={b.id} value={b.name}>
-        {b.name}
+      <option key={b.building_id} value={b.building_id}>
+      {b.name}
       </option>
     ))}
   </select>
@@ -217,12 +245,12 @@ export default function ReportsListPage() {
   {/* FLOOR */}
   <select
     value={floor}
-    onChange={(e) => setFloor(e.target.value)}
+    onChange={(e) => {setFloor(e.target.value);setRoom("");}}
     className="border rounded-lg px-3 py-2 font-medium"
   >
     <option value="">All Floors</option>
-    {floors.map((f) => (
-      <option key={f.id} value={f.floor_name}>
+    {filteredFloors.map((f) => (
+      <option key={f.floor_id} value={f.floor_id}>
         {f.floor_name}
       </option>
     ))}
@@ -235,8 +263,8 @@ export default function ReportsListPage() {
     className="border rounded-lg px-3 py-2 font-medium"
   >
     <option value="">All Rooms</option>
-    {rooms.map((r) => (
-      <option key={r.id} value={r.room_name}>
+    {filteredRooms.map((r) => (
+      <option key={r.room_id} value={r.room_id}>
         {r.room_name}
       </option>
     ))}
@@ -268,7 +296,7 @@ export default function ReportsListPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {reports.map((report, index) => (
               <div
-                key={report.id}
+                key={report.report_id}
                 className={`
                   bg-white rounded-2xl shadow-xl border-t-4
                   ${
@@ -300,12 +328,12 @@ export default function ReportsListPage() {
 
                     <p className="flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-indigo-600" />
-                      Building: {report.buildings?.name ?? "N/A"}
+                      Building: {report.rooms?.floors?.buildings?.name ?? "N/A"}
                     </p>
 
                     <p className="flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-indigo-600" />
-                      Floor: {report.floors?.floor_name ?? "N/A"}
+                      Floor: {report.rooms?.floors?.floor_name ?? "N/A"}
                     </p>
 
                     <p className="flex items-center gap-2">
@@ -327,7 +355,7 @@ export default function ReportsListPage() {
                 <div className="mt-6 flex gap-3">
                   <button
                     disabled={report.status === "completed"}
-                    onClick={() => markAsCompleted(report.id)}
+                    onClick={() => markAsCompleted(report.report_id)}
                     className={`flex-1 flex items-center justify-center gap-2
                       px-4 py-2 rounded-xl font-semibold transition
                       ${
@@ -343,7 +371,7 @@ export default function ReportsListPage() {
                   </button>
 
                   <button
-                    onClick={() => deleteReport(report.id)}
+                    onClick={() => deleteReport(report.report_id)}
                     className="flex-1 flex items-center justify-center gap-2
                       px-4 py-2 bg-red-600 text-white rounded-xl
                       font-semibold hover:bg-red-700 transition"
