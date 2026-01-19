@@ -21,6 +21,7 @@ interface Report {
   description: string;
   created_at: string;
   status: "pending" | "completed";
+  action_taken?: string;
   buildings?: { name: string };
   floors?: { floor_name: string };
   rooms?: {
@@ -46,6 +47,9 @@ export default function ReportsListPage() {
   const [buildings, setBuildings] = useState<any[]>([]);
   const [floors, setFloors] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
+  const [actionText, setActionText] = useState("");
+  const [activeReport, setActiveReport] = useState<string | null>(null);
+
 
   // =====================
 // FILTERED DROPDOWNS
@@ -77,6 +81,7 @@ const filteredRooms = floor
           name,
           equipment,
           description,
+          action_taken,
           created_at,
           status,
           rooms!reports_id_room_fkey (
@@ -309,66 +314,67 @@ if (building)
                 `}
               >
                 {/* TOP */}
-                <div>
-                  <div className="text-center mb-4">
-                    <h2 className="text-xl font-bold">
-                      Report {index + 1}
-                    </h2>
-                    <p className="text-sm flex justify-center items-center gap-1 mt-1 font-medium">
-                      <Clock className="w-4 h-4" />
-                      {new Date(report.created_at).toLocaleTimeString()}
-                    </p>
-                  </div>
+                <div className="space-y-3 text-sm font-medium">
+  <p className="flex items-center gap-2">
+    <User className="w-4 h-4 text-indigo-600" />
+    Name: {report.name}
+  </p>
 
-                  <div className="space-y-3 text-sm font-medium">
-                    <p className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-indigo-600" />
-                      Name: {report.name}
-                    </p>
+  <p className="flex items-center gap-2">
+    <MapPin className="w-4 h-4 text-indigo-600" />
+    Building: {report.rooms?.floors?.buildings?.name ?? "N/A"}
+  </p>
 
-                    <p className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-indigo-600" />
-                      Building: {report.rooms?.floors?.buildings?.name ?? "N/A"}
-                    </p>
+  <p className="flex items-center gap-2">
+    <MapPin className="w-4 h-4 text-indigo-600" />
+    Floor: {report.rooms?.floors?.floor_name ?? "N/A"}
+  </p>
 
-                    <p className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-indigo-600" />
-                      Floor: {report.rooms?.floors?.floor_name ?? "N/A"}
-                    </p>
+  <p className="flex items-center gap-2">
+    <MapPin className="w-4 h-4 text-indigo-600" />
+    Room: {report.rooms?.room_name ?? "N/A"}
+  </p>
 
-                    <p className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-indigo-600" />
-                      Room: {report.rooms?.room_name ?? "N/A"}
-                    </p>
+  <p className="flex items-center gap-2">
+    <Monitor className="w-4 h-4 text-indigo-600" />
+    Equipment: {report.equipment}
+  </p>
 
-                    <p className="flex items-center gap-2">
-                      <Monitor className="w-4 h-4 text-indigo-600" />
-                      Equipment: {report.equipment}
-                    </p>
+  {/* Description */}
+  <div className="mt-3 bg-gray-100 p-3 rounded-lg text-sm font-normal">
+    <strong>Description:</strong>
+    <p className="mt-1">{report.description}</p>
+  </div>
 
-                    <div className="mt-3 bg-gray-100 p-3 rounded-lg text-sm font-normal">
-                      {report.description}
-                    </div>
-                  </div>
-                </div>
+  {/* Action Taken */}
+  {report.action_taken && (
+    <div className="mt-3 bg-green-50 border border-green-200 p-3 rounded-lg text-sm">
+      <strong>Action Taken:</strong>
+      <p className="mt-1">{report.action_taken}</p>
+    </div>
+  )}
+</div>
+
 
                 <div className="mt-6 flex gap-3">
                   <button
-                    disabled={report.status === "completed"}
-                    onClick={() => markAsCompleted(report.report_id)}
-                    className={`flex-1 flex items-center justify-center gap-2
-                      px-4 py-2 rounded-xl font-semibold transition
-                      ${
-                        report.status === "completed"
-                          ? "bg-gray-400 cursor-not-allowed"
-                          : "bg-green-600 hover:bg-green-700 text-white"
-                      }`}
-                  >
-                    <CheckCircle className="w-5 h-5" />
-                    {report.status === "completed"
-                      ? "COMPLETED"
-                      : "DONE"}
-                  </button>
+  onClick={() => {
+    setActiveReport(report.report_id);
+    setActionText(report.action_taken || "");
+  }}
+  className={`flex-1 flex items-center justify-center gap-2
+    px-4 py-2 rounded-xl font-semibold transition
+    ${
+      report.status === "completed"
+        ? "bg-blue-600 hover:bg-blue-700 text-white"
+        : "bg-green-600 hover:bg-green-700 text-white"
+    }`}
+>
+  <CheckCircle className="w-5 h-5" />
+  {report.status === "completed" ? "EDIT" : "DONE"}
+</button>
+
+
 
                   <button
                     onClick={() => deleteReport(report.report_id)}
@@ -384,6 +390,67 @@ if (building)
             ))}
           </div>
         )}
+    {/* ACTION MODAL */}
+{activeReport && (
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div className="bg-white rounded-xl p-6 w-full max-w-md">
+      <h2 className="text-xl font-bold mb-3">Action Taken</h2>
+
+      <textarea
+        value={actionText}
+        onChange={(e) => setActionText(e.target.value)}
+        rows={4}
+        className="w-full border rounded-lg p-3"
+        placeholder="Describe the action taken..."
+      />
+
+      <div className="mt-4 flex gap-3">
+        <button
+          onClick={() => {
+            setActiveReport(null);
+            setActionText("");
+          }}
+          className="flex-1 border rounded-lg py-2 font-semibold"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={async () => {
+            const { error } = await supabase
+              .from("reports")
+              .update({
+                status: "completed",
+                action_taken: actionText,
+              })
+              .eq("report_id", activeReport);
+
+            if (!error) {
+              setReports((prev) =>
+                prev.map((r) =>
+                  r.report_id === activeReport
+                    ? {
+                        ...r,
+                        status: "completed",
+                        action_taken: actionText,
+                      }
+                    : r
+                )
+              );
+            }
+
+            setActiveReport(null);
+            setActionText("");
+          }}
+          className="flex-1 bg-green-600 text-white rounded-lg py-2 font-semibold hover:bg-green-700"
+        >
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
       </main>
     </div>
   );
