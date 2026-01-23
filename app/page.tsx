@@ -141,7 +141,7 @@ export default function DashboardPage() {
       {/* SIDEBAR */}
       <aside className="hidden md:block w-64 bg-white shadow-sm">
         <div className="p-6">
-          <h2 className="text-xl font-bold text-indigo-700">Admin Dash</h2>
+          <h2 className="text-xl font-bold text-indigo-700">Admin Dashboard</h2>
         </div>
 
         <nav className="p-4 space-y-2">
@@ -149,7 +149,7 @@ export default function DashboardPage() {
             href="/admin/dashboard"
             className="block px-3 py-2 rounded-lg bg-indigo-100 text-indigo-700"
           >
-            Today Dashboard
+            Today Report
           </Link>
 
           <Link
