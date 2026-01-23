@@ -35,7 +35,7 @@ interface Report {
   action_taken?: string;
   created_at: string;
   status: "pending" | "completed";
-  rooms?: Room[];  // <-- Changed to array
+  rooms?: Room;  // <-- Changed to array
 }
 
 export default function DashboardPage() {
@@ -141,7 +141,7 @@ export default function DashboardPage() {
       {/* SIDEBAR */}
       <aside className="hidden md:block w-64 bg-white shadow-sm">
         <div className="p-6">
-          <h2 className="text-xl font-bold text-indigo-700">Admin Panel</h2>
+          <h2 className="text-xl font-bold text-indigo-700">Admin Dash</h2>
         </div>
 
         <nav className="p-4 space-y-2">
@@ -210,17 +210,17 @@ export default function DashboardPage() {
 
                   <p className="flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-indigo-600" />
-                    Building: {report.rooms?.[0]?.floors?.buildings?.name ?? "N/A"}
+                    Building: {report.rooms?.floors?.buildings?.name ?? "N/A"}
                   </p>
 
                   <p className="flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-indigo-600" />
-                    Floor: {report.rooms?.[0]?.floors?.floor_name ?? "N/A"}
+                    Floor: {report.rooms?.floors?.floor_name ?? "N/A"}
                   </p>
 
                   <p className="flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-indigo-600" />
-                    Room: {report.rooms?.[0]?.room_name ?? "N/A"}
+                    Room: {report.rooms?.room_name ?? "N/A"}
                   </p>
 
                   <p className="flex items-center gap-2">
