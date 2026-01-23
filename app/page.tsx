@@ -149,7 +149,7 @@ export default function DashboardPage() {
             href="/admin/dashboard"
             className="block px-3 py-2 rounded-lg bg-indigo-100 text-indigo-700"
           >
-            Today Report
+            Today Reports
           </Link>
 
           <Link

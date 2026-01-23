@@ -188,12 +188,12 @@ if (building)
       {/* SIDEBAR */}
       <aside className="w-64 bg-white shadow-sm">
         <div className="p-6">
-          <h2 className="text-xl font-bold text-indigo-700">Admin Panel</h2>
+          <h2 className="text-xl font-bold text-indigo-700">Admin Dashboard</h2>
         </div>
 
         <nav className="p-4 space-y-2">
           <Link href="/" className="block px-3 py-2 rounded-lg hover:bg-gray-100">
-            Today Dashboard
+            Today Reports
           </Link>
 
           <Link
